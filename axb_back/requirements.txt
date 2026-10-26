@@ -1,0 +1,36 @@
+# 安行伴后端依赖包
+
+# Web框架
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+python-multipart==0.0.32
+
+# 数据库
+SQLAlchemy==2.0.52
+pymysql==1.2.0
+cryptography==50.0.1
+
+# 数据验证
+pydantic==2.13.5
+pydantic-settings==2.15.0
+email-validator==2.3.0
+
+# 认证与安全
+PyJWT==2.13.0
+bcrypt==5.0.0
+python-jose[cryptography]==3.5.0
+
+# 权限管理
+fastapi-permissions==0.2.7
+
+# 工具库
+python-dotenv==1.2.3
+segno==1.6.6
+
+# 测试
+pytest==9.1.1
+pytest-asyncio==1.4.0
+httpx==0.28.1
+
+# 代码质量
+mutmut==3.7.0

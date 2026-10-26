@@ -1,167 +1,192 @@
-# 安伴行（重庆试点）
+# 安行伴（重庆试点）
 
-这是一个可本地直接运行的真实产品 MVP（非演示模型），核心目标是帮助子女与长辈在出行过程中实现协同建档、行程安全保障、代际互动和回忆沉淀。
+这是一个可本地直接运行的真实产品 MVP，核心目标是帮助子女与长辈在出行过程中实现协同建档、行程安全保障、代际互动和回忆沉淀。
 
-## 1. 这个 App 是怎么工作的
+## 系统概览
 
-系统由两部分组成：
+### 技术架构
+- **后端**: FastAPI + SQLAlchemy + MySQL 8.0
+- **Web 前端**: React 18 + Vite 5 (PWA)
+- **移动端**: Flutter (子女端 + 老人端)
+- **认证**: JWT Token 双端用户体系
 
-- 后端：FastAPI + SQLAlchemy + SQLite
-- 前端：静态 Web App（PWA），由浏览器访问并调用后端 API
+> 📖 详细架构说明请参考 [后端架构文档](config/doc/backend/后端架构.md)
 
-核心业务链路如下：
+## 核心功能
 
-1. 家庭协同建档
-- 子女填写父母和自己的联系方式、健康信息、兴趣偏好。
-- 数据写入 profiles 表。
+1. **认证与用户体系** - 子女端和老人端分离的双用户系统（JWT Token）
+2. **家庭协同建档** - 多成员档案管理，包含联系方式、健康信息、兴趣偏好
+3. **行程管理** - 创建行程并生成动态通行码（HMAC + SVG 二维码）
+4. **紧急求助** - 双通道通知（短信 + 企业微信），支持离线队列
+5. **代际任务** - 子女创建任务，长辈完成并获得反馈
+6. **景点讲解** - 重庆核心景点的知识问答
+7. **数字回忆卡** - 从行程与任务生成回忆摘要
 
-2. 创建行程并生成动态通行码
-- 基于 profile 创建 trip。
-- 服务端按 profile_id + trip_id + 时间戳 + 随机 nonce 生成 HMAC token。
-- token 同步生成 SVG 二维码，返回给前端展示与复制。
+> 📖 完整 API 说明请参考 [API 标准文档](config/doc/API标准文档.md)
 
-3. 紧急求助（双通道）
-- 前端触发 SOS 后调用 /api/sos/trigger。
-- 服务端并行走短信与企业微信 webhook 两个通道（默认可 mock）。
-- 同时记录 SOS 轨迹、网络状态、健康快照、通知状态。
-- 前端离线时会先入本地队列，网络恢复后自动补发。
+## 项目结构
 
-4. 代际挑战任务
-- 子女创建任务（如拍照、打卡）。
-- 长辈完成后可标记完成，子女发送反馈，累计爱心值。
-
-5. 安伴行讲解（知识有限）
-- 目前为重庆核心景点的受限问答。
-- 返回 answer + confidence + scope（knowledge_limited）。
-
-6. 生成数字回忆卡
-- 从行程与已完成任务生成摘要。
-- 结果写入 memory_cards 表，便于分享与回看。
-
-## 2. 项目结构
-
-- app/main.py：FastAPI 入口，挂载 API 路由和静态资源
-- app/models.py：数据库模型（Profile/Trip/Task/SOSRecord/MemoryCard）
-- app/routers/：各业务接口
-- app/services/：动态通行码、通知、讲解服务
-- app/static/：前端页面、脚本、样式、PWA 资源
-- tests/test_api.py：核心流程回归测试
-- scripts/smoke_test.py：HTTP 级冒烟链路脚本
-
-## 3. 必要 Requirement
-
-### 3.1 运行环境 Requirement
-
-- 操作系统：Windows（你当前环境）
-- Python：3.10.x（建议与当前 conda 环境一致）
-- 包管理：pip（或 conda + pip）
-- 浏览器：Chrome / Edge 最新版（用于 PWA 与本地调试）
-
-### 3.2 Python 依赖 Requirement
-
-依赖已在 requirements.txt 中声明：
-
-- fastapi==0.115.0
-- uvicorn[standard]==0.30.6
-- sqlalchemy==2.0.36
-- pydantic-settings==2.6.1
-- httpx==0.27.2
-- segno==1.6.1
-- python-multipart==0.0.12
-- pytest==8.3.3
-
-### 3.3 配置 Requirement（.env）
-
-项目根目录需要 .env 文件（可由 .env.example 复制）：
-
-- APP_NAME
-- ENVIRONMENT
-- DATABASE_URL
-- TOKEN_SECRET
-- WECHAT_WEBHOOK_URL
-- SMS_PROVIDER
-- PILOT_CITY
-- GUIDE_SCOPE
-
-默认配置可直接本地运行，短信与企业微信可使用 mock。
-
-## 4. 在你电脑本地启动运行（Windows + conda）
-
-以下命令可直接在 PowerShell 执行。
-
-1. 进入项目目录
-
-```powershell
-Set-Location D:\Code\Anbanxing_elder_helper
+```
+├── axb_back/                     # 后端应用包
+│   ├── app/                      # 后端应用
+│   │   ├── main.py               # FastAPI 入口，路由注册
+│   │   ├── config.py             # 配置管理（基于 Pydantic Settings）
+│   │   ├── database.py           # 数据库连接和会话管理
+│   │   ├── logger.py             # 日志配置
+│   │   ├── error_codes.py        # 统一错误码定义
+│   │   ├── modules/              # 业务模块（模块化架构）
+│   │   │   ├── auth/             # 认证模块（注册、登录、JWT）
+│   │   │   ├── profile/          # 家庭档案模块
+│   │   │   ├── trip/             # 行程管理模块
+│   │   │   ├── task/             # 代际任务模块
+│   │   │   ├── sos/              # 紧急求助模块
+│   │   │   ├── guide/            # 景点讲解模块
+│   │   │   └── card/             # 回忆卡片模块
+│   │   │   └── (每个模块包含)
+│   │   │       ├── controller/   # API 路由和请求处理
+│   │   │       ├── service/      # 业务逻辑层
+│   │   │       ├── entity/       # 数据库实体模型
+│   │   │       └── dto/          # 数据传输对象
+│   │   └── services/             # 共享服务
+│   │       ├── pass_token.py     # 动态通行码生成
+│   │       ├── notification.py   # 通知服务（短信/企业微信）
+│   │       └── ai_guide.py       # AI 讲解服务
+│   ├── tests/                    # 测试文件
+│   │   ├── test_api.py           # API 集成测试
+│   │   ├── test_profile.py       # Profile 模块测试
+│   │   ├── test_trip.py          # Trip 模块测试
+│   │   └── test_other_modules.py # 其他模块测试
+│   ├── scripts/                  # 辅助脚本
+│   │   ├── smoke_test.py         # HTTP 级冒烟测试
+│   │   └── list_routes.py        # 路由列表工具
+│   ├── db/                       # 数据库脚本
+│   │   ├── DDL.sql               # 数据库结构定义
+│   │   └── DDL_new.sql           # 更新的数据库结构
+│   ├── requirements.txt          # Python 依赖
+│   ├── pytest.ini                # Pytest 配置
+│   └── setup.cfg                 # 变异测试配置
+├── axb_front/                    # Web 前端包（React + Vite）
+│   ├── src/
+│   │   ├── components/           # React 组件
+│   │   ├── api/                  # API 客户端
+│   │   └── hooks/                # React Hooks
+│   ├── pic_frontend/             # 前端展示图片
+│   ├── package.json
+│   └── vite.config.js
+├── axb_mobile/                   # Flutter 移动端包
+│   ├── anxingban/                # 子女端 App
+│   └── anxingban_user/           # 老人端 App
+├── config/                       # 配置包
+│   ├── doc/                      # 项目文档
+│   │   ├── API标准文档.md        # 完整 API 文档
+│   │   ├── backend/              # 后端文档
+│   │   ├── frontend/             # 前端文档
+│   │   └── mobile/               # 移动端文档
+│   ├── docker-compose.yml        # Docker 编排配置
+│   ├── Dockerfile                # 后端镜像构建
+│   ├── .env.example              # 环境变量模板
+│   └── .env.test.example         # 测试环境变量模板
+└── README.md                     # 项目说明文档
 ```
 
-2. 激活 conda 环境（你当前用的是 my_pytorch）
+## 快速启动
 
-```powershell
-C:\Users\LoveS\anaconda3\Scripts\activate
-conda activate my_pytorch
+### 前置要求
+- Python 3.10+, MySQL 8.0+
+- Node.js 16+ (前端)
+- Flutter 3.0+ (移动端)
+
+### 环境配置
+
+```bash
+# 1. 复制环境变量模板
+cp config/.env.example .env
+
+# 2. 编辑 .env，配置数据库连接和密钥
+# DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/anxingban?charset=utf8mb4
+# TOKEN_SECRET=your-secret-here
 ```
 
-3. 安装依赖
+> 📖 完整配置说明请参考 [后端部署文档](config/doc/backend/后端部署.md)
 
-```powershell
+### 启动后端
+
+```bash
+cd axb_back
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-4. 准备环境变量
+访问 <http://127.0.0.1:8000/docs> 查看 API 文档
 
-```powershell
-Copy-Item .env.example .env -Force
+### 启动前端
+
+```bash
+cd axb_front
+npm install
+npm run dev
 ```
 
-5. 启动服务
+访问 <http://localhost:5173>
 
-```powershell
-C:/Users/LoveS/anaconda3/envs/my_pytorch/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+### Docker 部署
+
+```bash
+cd config
+docker-compose up -d
 ```
 
-6. 打开页面
+> 📖 详细部署步骤请参考 [后端部署文档](config/doc/backend/后端部署.md) 和 [前端部署记录](config/doc/frontend/部署记录.md)
 
-- 业务主页：http://127.0.0.1:8000
-- API 文档：http://127.0.0.1:8000/docs
+## 项目结构
 
-## 5. 常用验证命令
-
-1. 运行回归测试
-
-```powershell
-C:/Users/LoveS/anaconda3/envs/my_pytorch/python.exe -m pytest -q
+```
+├── axb_back/                 # 后端应用（模块化三层架构）
+│   ├── app/                  # FastAPI 应用
+│   ├── modules/              # 业务模块（auth/profile/trip/task/sos/guide/card）
+│   ├── services/             # 共享服务（通行码/通知/AI讲解）
+│   ├── tests/                # 测试文件
+│   ├── scripts/              # 辅助脚本
+│   └── db/                   # 数据库脚本
+├── axb_front/                # Web 前端（React + Vite）
+├── axb_mobile/               # Flutter 移动端（子女端 + 老人端）
+└── config/                   # 配置和文档
+    ├── doc/                  # 项目文档
+    ├── docker-compose.yml    # Docker 编排
+    └── .env.example          # 环境变量模板
 ```
 
-2. 运行端到端冒烟脚本（需服务已启动）
+> 📖 详细结构说明请参考 [后端架构文档](config/doc/backend/后端架构.md)
 
-```powershell
-C:/Users/LoveS/anaconda3/envs/my_pytorch/python.exe scripts/smoke_test.py
+## 测试
+
+```bash
+# 后端测试（需要独立测试数据库）
+cd axb_back
+TEST_DATABASE_URL='mysql+pymysql://user:pass@localhost:3306/anxingban_test?charset=utf8mb4' \
+  python -m pytest -v
+
+# 冒烟测试
+python scripts/smoke_test.py
 ```
 
-## 6. 常见问题
+## 技术文档
 
-1. 8000 端口占用，服务启动失败
+- [API 标准文档](config/doc/API标准文档.md) - 完整的 API 接口说明
+- [后端架构文档](config/doc/backend/后端架构.md) - 技术栈与设计模式
+- [后端部署文档](config/doc/backend/后端部署.md) - 部署步骤与配置说明
+- [前端部署记录](config/doc/frontend/部署记录.md) - 前端部署流程
+- [移动端架构](config/doc/mobile/移动端架构.md) - Flutter 应用架构
+- [老人端适配总结](config/doc/mobile/老人端适配总结.md) - 老人端 UI/UX 设计
 
-```powershell
-Get-NetTCPConnection -LocalPort 8000 | Select-Object OwningProcess, LocalAddress, LocalPort, State
-Stop-Process -Id <PID> -Force
-```
+## 开发日志
 
-或改端口启动：
+- [用户体系构建](config/doc/log/0826用户体系构建.md) - v2.0 认证系统重构记录
+- [用户系统说明](config/doc/log/USER_SYSTEM.md) - 双端用户体系设计
 
-```powershell
-C:/Users/LoveS/anaconda3/envs/my_pytorch/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
-```
+## 许可证
 
-2. 前端改了但页面没变化
+暂无
 
-- 由于启用了 Service Worker 缓存，建议先 Ctrl+F5 强刷。
-- 若仍无变化，可在浏览器 DevTools 中清理站点缓存后重开。
-
-## 7. 当前试点约束
-
-- 试点城市固定重庆
-- 求助通知为双通道（短信 + 企业微信）
-- 讲解能力为知识有限范围
-- 先做数字回忆卡，不含线下兑换

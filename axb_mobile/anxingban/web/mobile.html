@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>安行伴 - 竖屏浏览器版本</title>
+
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Noto+Serif+SC:wght@600;700&display=swap");
+
+        :root {
+            --bg: #0b1020;
+            --ink: #eaf2ff;
+            --ink-soft: #bfd0ea;
+            --brand: #77cbff;
+            --brand-deep: #3b86d6;
+            --danger: #ff657b;
+            --line: rgba(255, 255, 255, 0.26);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            overflow: hidden;
+            overscroll-behavior: none;
+            font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 10% 10%, #24499b 0%, transparent 38%),
+                radial-gradient(circle at 90% 22%, #23abc9 0%, transparent 30%),
+                radial-gradient(circle at 50% 100%, #332a83 0%, transparent 36%),
+                var(--bg);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Portrait orientation lock */
+        @media screen and (orientation: landscape) and (max-width: 900px) {
+            body::before {
+                content: '请将设备竖屏使用';
+                position: fixed;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: var(--bg);
+                font-size: 18px;
+                z-index: 10000;
+            }
+
+            #app {
+                display: none;
+            }
+        }
+
+        #app {
+            width: 100%;
+            height: 100%;
+            max-width: 430px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        /* Loading screen */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: inherit;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loader {
+            text-align: center;
+        }
+
+        .logo {
+            font-family: "Noto Serif SC", serif;
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, var(--brand), var(--brand-deep));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 0.08em;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(119, 203, 255, 0.2);
+            border-top-color: var(--brand);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            font-size: 14px;
+            color: var(--ink-soft);
+            letter-spacing: 0.12em;
+        }
+
+        /* Prevent gestures */
+        body {
+            touch-action: pan-x pan-y;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* Status message */
+        .status-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(59, 134, 214, 0.95);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 10001;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loading-overlay" id="loading">
+        <div class="loader">
+            <div class="logo">安行伴</div>
+            <div class="spinner"></div>
+            <div class="loading-text">初始化中...</div>
+        </div>
+    </div>
+
+    <div id="app">
+        <!-- Flutter app will be injected here -->
+    </div>
+
+    <script>
+        // Prevent default touch behaviors
+        document.addEventListener('gesturestart', e => e.preventDefault());
+        document.addEventListener('gesturechange', e => e.preventDefault());
+        document.addEventListener('gestureend', e => e.preventDefault());
+
+        // Prevent pull-to-refresh
+        let lastTouchY = 0;
+        document.addEventListener('touchstart', e => {
+            lastTouchY = e.touches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchmove', e => {
+            const touchY = e.touches[0].clientY;
+            const touchYDelta = touchY - lastTouchY;
+
+            if (window.scrollY === 0 && touchYDelta > 0) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Show status message
+        function showMessage(text, duration = 3000) {
+            const msg = document.createElement('div');
+            msg.className = 'status-message';
+            msg.textContent = text;
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), duration);
+        }
+
+        // Check if Flutter is available
+        window.addEventListener('load', () => {
+            if (!window._flutter) {
+                showMessage('正在加载 Flutter Web 引擎...');
+            }
+        });
+
+        // Hide loading when ready
+        window.addEventListener('flutter-first-frame', () => {
+            const loading = document.getElementById('loading');
+            loading.classList.add('hidden');
+            setTimeout(() => loading.remove(), 300);
+        });
+
+        // Fallback if Flutter doesn't load
+        setTimeout(() => {
+            const loading = document.getElementById('loading');
+            if (loading && !loading.classList.contains('hidden')) {
+                loading.innerHTML = `
+          <div class="loader">
+            <div class="logo">安行伴</div>
+            <div class="loading-text" style="color: var(--danger); margin-top: 20px;">
+              Flutter Web 引擎加载失败<br><br>
+              请使用以下命令构建应用：<br>
+              <code style="background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 8px;">
+                flutter build web --release
+              </code>
+            </div>
+          </div>
+        `;
+            }
+        }, 10000);
+    </script>
+</body>
+
+</html>

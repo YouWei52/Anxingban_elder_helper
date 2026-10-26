@@ -1,9 +1,0 @@
-{
-  "name": "安行伴-重庆试点",
-  "short_name": "安行伴",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#f6f0e8",
-  "theme_color": "#f6f0e8",
-  "description": "安行伴：面向重庆试点的家庭协同银发出行支持应用"
-}
